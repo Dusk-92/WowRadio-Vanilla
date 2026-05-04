@@ -2,6 +2,9 @@
 
 Listen to Internet Radio while playing World of Warcraft.
 
+<img width="554" height="428" alt="image" src="https://github.com/user-attachments/assets/f4ab666e-38ec-4440-8ea9-f42cf6f7f701" />
+
+
  - addon based on Ace2
  - 96 radio stations included
  - easy way to change stations in Stations.lua:
