@@ -1,6 +1,6 @@
 # WowRadio-Vanilla
 
-Listen to Internet Radio while playing World of Warcraft.
+Listen to Internet Radio while playing World of Warcraft. For WoW client 1.12.
 
 <img width="554" height="428" alt="image" src="https://github.com/user-attachments/assets/f4ab666e-38ec-4440-8ea9-f42cf6f7f701" />
 
