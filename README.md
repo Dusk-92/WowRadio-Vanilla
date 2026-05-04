@@ -30,9 +30,11 @@ Known Issues: none.
 So have fun with this one, hope you like it.
 
 Changelog:
--- 1.0  Added 96 new stations, custom url button, fade on move toggle, resizing, saving parameters, keybinds -- 2026/05/05
--- 0.4a Backported to vanilla   --  2015/08/30
--- 0.4 	/wrinfo now correctly shows url if playing custom url  -- 2006/12/25
---     	Titan Panel Plugin included
--- 	moved stations to Stations.lua
+- 1.0  Added 96 new stations, custom url button, fade on move toggle, resizing, saving parameters, keybinds -- 2026/05/05
+
+- 0.4a Backported to vanilla   --  2015/08/30
+  
+- 0.4 	/wrinfo now correctly shows url if playing custom url  -2006/12/25
+- Titan Panel Plugin included
+- moved stations to Stations.lua
 
