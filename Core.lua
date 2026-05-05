@@ -207,12 +207,20 @@ function WowRadio:OnEnable()
 	WowRadio:CreateMinimapButton()
 	WowRadio:CreateController()
 
+	-- Restore custom URL from previous session.
+	customUrl = self.db.account.customUrl or nil
+
 	if WowRadio.db.account.ui.shown == true then
 		WowRadio:ShowController()
 	end
 
 	if WowRadio:isAutostart() == true then
-		WowRadio:play()
+		if customUrl then
+			PlayMusic(customUrl)
+			stopped = false
+		else
+			WowRadio:play()
+		end
 	end
 
 	self:Print(L["msg_enabled"])
@@ -274,6 +282,7 @@ function WowRadio:play(station)
 	PlayMusic(stationUrl[station])
 
 	self.db.account.station = station
+	self.db.account.customUrl = nil
 	stopped = false
 	customUrl = nil
 
@@ -309,6 +318,7 @@ function WowRadio:url(url)
 
 	wr_alert(url)
 	customUrl = url
+	self.db.account.customUrl = url
 	PlayMusic(url)
 	stopped = false
 
