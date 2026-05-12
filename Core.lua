@@ -216,6 +216,7 @@ function WowRadio:OnEnable()
 
 	if WowRadio:isAutostart() == true then
 		if customUrl then
+			StopMusic()
 			PlayMusic(customUrl)
 			stopped = false
 		else
@@ -279,6 +280,7 @@ function WowRadio:play(station)
 	end
 
 	wr_alert("["..station.."] "..stationMsg[station])
+	StopMusic()
 	PlayMusic(stationUrl[station])
 
 	self.db.account.station = station
@@ -319,6 +321,7 @@ function WowRadio:url(url)
 	wr_alert(url)
 	customUrl = url
 	self.db.account.customUrl = url
+	StopMusic()
 	PlayMusic(url)
 	stopped = false
 
@@ -695,12 +698,14 @@ function WowRadio:ShowController()
 	end
 
 	WowRadioFrame:Show()
+	if WowRadioFrame.moveWatcher then WowRadioFrame.moveWatcher:Show() end
 	self.db.account.ui.shown = true
 	WowRadio:RefreshUI()
 end
 
 function WowRadio:HideController()
 	if WowRadioFrame then
+		if WowRadioFrame.moveWatcher then WowRadioFrame.moveWatcher:Hide() end
 		WowRadioFrame:Hide()
 	end
 
@@ -906,8 +911,8 @@ function WowRadio:CreateController()
 			end
 			return
 		end
-		local mx, my = GetPlayerMapPosition("player")
-		if mx == 0 and my == 0 then return end
+		local ok, mx, my = pcall(GetPlayerMapPosition, "player")
+		if not ok or not mx or not my or (mx == 0 and my == 0) then return end
 		local moving = (mx ~= lastMX or my ~= lastMY)
 		lastMX, lastMY = mx, my
 		if moving and not wasMoving then
@@ -918,7 +923,6 @@ function WowRadio:CreateController()
 			wasMoving = false
 		end
 	end)
-	moveWatcher:Show()
 	f.moveWatcher = moveWatcher
 
 	-- Now-playing display.
@@ -1092,7 +1096,7 @@ function WowRadio:CreateController()
 	urlEditBox:SetWidth(390)
 	urlEditBox:SetHeight(20)
 	urlEditBox:SetPoint("TOPLEFT", urlDialog, "TOPLEFT", 16, -34)
-	urlEditBox:SetMaxLetters(512)
+	urlEditBox:SetMaxLetters(250)
 	urlEditBox:SetAutoFocus(false)
 	urlEditBox:SetScript("OnEscapePressed", function()
 		urlDialog:Hide()
@@ -1218,7 +1222,11 @@ function WowRadio:ToggleFavorite(index)
 	end
 
 	local key = tostring(index)
-	self.db.account.favorites[key] = not self.db.account.favorites[key]
+	if self.db.account.favorites[key] then
+		self.db.account.favorites[key] = nil
+	else
+		self.db.account.favorites[key] = true
+	end
 
 	WowRadio:RefreshUI()
 end
