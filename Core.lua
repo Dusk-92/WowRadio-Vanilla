@@ -176,11 +176,14 @@ WowRadio:RegisterDefaults("account", {
 	autostart = false,
 	station = 1,
 	fadeOnMove = false,
+	muted = false,
+	muteVolume = nil,
 
 	ui = {
 		shown = false,
 		tab = "ALL",
 		page = 1,
+		compact = false,
 		scale = 1.0,
 		framePoint = "CENTER",
 		frameRelPoint = "CENTER",
@@ -209,6 +212,14 @@ function WowRadio:OnEnable()
 
 	-- Restore custom URL from previous session.
 	customUrl = self.db.account.customUrl or nil
+
+	-- Re-apply muted state (CVar resets on reload).
+	if WowRadio.db.account.muted then
+		WowRadio:SafeSetCVar("EnableMusic", "1")
+		WowRadio:SafeSetCVar("Sound_EnableMusic", "1")
+		WowRadio:SafeSetCVar("MusicVolume", 0)
+		WowRadio:SafeSetCVar("Sound_MusicVolume", 0)
+	end
 
 	if WowRadio.db.account.ui.shown == true then
 		WowRadio:ShowController()
@@ -501,6 +512,12 @@ local WR_FRAME_HEIGHT = 430
 local WR_BACKDROP_TEXTURE_LEFT = "Interface\\AddOns\\WowRadio-Vanilla\\bg_left"
 local WR_BACKDROP_TEXTURE_RIGHT = "Interface\\AddOns\\WowRadio-Vanilla\\bg_right"
 
+local WR_MINI_WIDTH = 370
+local WR_MINI_HEIGHT = 90
+local WR_MICRO_SCROLL_CHARS = 30
+local WR_MICRO_SCROLL_INTERVAL = 0.24
+local WR_MICRO_SCROLL_PAUSE = 10.0
+
 local WR_TABS = {
 	{ key = "ALL",        label = "All",     width = 45 },
 	{ key = "FAV",        label = "Fav",     width = 45 },
@@ -532,6 +549,14 @@ function WowRadio:EnsureUIDefaults()
 
 	if self.db.account.ui.page == nil then
 		self.db.account.ui.page = 1
+	end
+
+	if self.db.account.ui.compact == nil then
+		self.db.account.ui.compact = false
+	end
+
+	if self.db.account.muted == nil then
+		self.db.account.muted = false
 	end
 
 	if self.db.account.favorites == nil then
@@ -844,22 +869,49 @@ function WowRadio:CreateController()
 	-- Title/banner is part of the custom backdrop image now.
 	-- No code-created title bar here.
 
-	local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+	local close = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 	if close.SetFrameLevel then
 		close:SetFrameLevel(f:GetFrameLevel() + 20)
 	end
-	close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, -4)
+	close:SetWidth(22)
+	close:SetHeight(18)
+	close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -6)
+	close:SetText("x")
 	close:SetScript("OnClick", function()
 		WowRadio:HideController()
 	end)
+	f.closeButton = close
 
-	local fadeBtn = WowRadio:CreateWRButton(f, "Fade", 8, -6, 50, 18, function()
+	-- Minimize button: same small style as close, sits to its left.
+	local minimizeBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+	if minimizeBtn.SetFrameLevel then
+		minimizeBtn:SetFrameLevel(f:GetFrameLevel() + 20)
+	end
+	minimizeBtn:SetWidth(22)
+	minimizeBtn:SetHeight(18)
+	minimizeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -32, -6)
+	minimizeBtn:SetText("_")
+	minimizeBtn:SetScript("OnClick", function()
+		WowRadio:ToggleMiniPlayer()
+	end)
+	f.minimizeButton = minimizeBtn
+
+	local fadeBtn = WowRadio:CreateWRButton(f, "Fade", 8, -6, 46, 18, function()
 		WowRadio:ToggleFadeOnMove()
 	end)
 	if fadeBtn.SetFrameLevel then
 		fadeBtn:SetFrameLevel(f:GetFrameLevel() + 20)
 	end
 	f.fadeButton = fadeBtn
+
+	-- Mute button: repositioned by ApplyUIMode for full vs mini layout.
+	local muteBtn = WowRadio:CreateWRButton(f, "Mute", 0, 0, 46, 18, function()
+		WowRadio:ToggleMute()
+	end)
+	if muteBtn.SetFrameLevel then
+		muteBtn:SetFrameLevel(f:GetFrameLevel() + 20)
+	end
+	f.muteButton = muteBtn
 
 	local sizer = CreateFrame("Button", nil, f)
 	sizer:SetWidth(16)
@@ -893,6 +945,7 @@ function WowRadio:CreateController()
 		if newScale > 2.0 then newScale = 2.0 end
 		WowRadioFrame:SetScale(newScale)
 	end)
+	f.sizer = sizer
 
 	local wasMoving = false
 	local lastMX, lastMY = 0, 0
@@ -1052,7 +1105,7 @@ function WowRadio:CreateController()
 	end
 
 	f.pageText = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	f.pageText:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -394)
+	f.pageText:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -399)
 	f.pageText:SetWidth(330)
 	f.pageText:SetJustifyH("LEFT")
 	f.pageText:SetText("Page 1")
@@ -1131,6 +1184,7 @@ function WowRadio:CreateController()
 	f.urlEditBox = urlEditBox
 
 	WowRadio:ApplyVolume(WowRadio:GetVolume(), true)
+	WowRadio:ApplyUIMode()
 	WowRadio:RefreshUI()
 end
 
@@ -1285,34 +1339,32 @@ function WowRadio:RefreshUI()
 		state = "Stopped"
 	end
 
-	if customUrl == nil then
-		local station = WowRadio:getStation()
+	if f.nowStatusText then
+		f.nowStatusText:SetText("|cffffffff"..state..":|r")
+	end
 
-		if f.nowStatusText then
-			f.nowStatusText:SetText("|cffffffff"..state..":|r")
-		end
-
-		if f.nowStationText then
+	if f.nowStationText then
+		if customUrl == nil then
+			local station = WowRadio:getStation()
 			f.nowStationText:SetText("|cff00ff00["..station.."] "..wr_trim(WowRadio:getStationShortName(station), 40).."|r")
-		elseif f.nowText then
-			f.nowText:SetText("|cffffffff"..state..":|r |cff00ff00["..station.."] "..WowRadio:getStationShortName(station).."|r")
-		end
-	else
-		if f.nowStatusText then
-			f.nowStatusText:SetText("|cffffffff"..state..":|r")
-		end
-
-		if f.nowStationText then
+		else
 			f.nowStationText:SetText("|cff00ff00[custom] "..wr_trim(customUrl, 40).."|r")
-		elseif f.nowText then
+		end
+	elseif f.nowText then
+		if customUrl == nil then
+			local station = WowRadio:getStation()
+			f.nowText:SetText("|cffffffff"..state..":|r |cff00ff00["..station.."] "..WowRadio:getStationShortName(station).."|r")
+		else
 			f.nowText:SetText("|cffffffff"..state..":|r |cff00ff00[custom] "..wr_trim(customUrl, 80).."|r")
 		end
 	end
 
-	if self.db.account.autostart == true then
-		f.autoButton:SetText("Auto: On")
-	else
-		f.autoButton:SetText("Auto: Off")
+	if f.autoButton then
+		if self.db.account.autostart == true then
+			f.autoButton:SetText("Auto: On")
+		else
+			f.autoButton:SetText("Auto: Off")
+		end
 	end
 
 	if f.fadeButton then
@@ -1323,6 +1375,14 @@ function WowRadio:RefreshUI()
 		end
 	end
 
+	if f.muteButton then
+		if self.db.account.muted then
+			f.muteButton:SetText("|cffFF5555Mute|r")
+		else
+			f.muteButton:SetText("Mute")
+		end
+	end
+
 	if f.volumeSlider then
 		local v = WowRadio:GetVolume()
 		if f.volumeSlider:GetValue() ~= v then
@@ -1330,12 +1390,24 @@ function WowRadio:RefreshUI()
 		end
 	end
 
+	WowRadio:ApplyUIMode()
 	WowRadio:UpdateTabButtons()
 	WowRadio:ShowStationPanel()
 end
 
 function WowRadio:ShowStationPanel()
 	local f = WowRadioFrame
+
+	if self.db.account.ui.compact == true then
+		for i = 1, WR_LINES_PER_PAGE do
+			f.rows[i].star:Hide()
+			f.rows[i].row:Hide()
+		end
+		f.pageText:Hide()
+		f.pagePrev:Hide()
+		f.pageNext:Hide()
+		return
+	end
 
 	f.pageText:Show()
 	f.pagePrev:Show()
@@ -1396,7 +1468,270 @@ function WowRadio:ShowStationPanel()
 end
 
 -----------------------------------------------------------------
--- WowRadio 
+-- Mini Player / Compact Mode
+-----------------------------------------------------------------
+
+function WowRadio:ToggleMiniPlayer()
+	self.db.account.ui.compact = not self.db.account.ui.compact
+	WowRadio:ApplyUIMode()
+	WowRadio:RefreshUI()
+end
+
+function WowRadio:ToggleMute()
+	self.db.account.muted = not self.db.account.muted
+	if self.db.account.muted then
+		WowRadio:SafeSetCVar("EnableMusic", "1")
+		WowRadio:SafeSetCVar("Sound_EnableMusic", "1")
+		WowRadio:SafeSetCVar("MusicVolume", 0)
+		WowRadio:SafeSetCVar("Sound_MusicVolume", 0)
+	else
+		WowRadio:ApplyVolume(WowRadio:GetVolume(), true)
+	end
+	WowRadio:RefreshUI()
+end
+
+function WowRadio:ApplyUIMode()
+	if not WowRadioFrame then return end
+	local f = WowRadioFrame
+	local compact = self.db.account.ui.compact == true
+
+	if compact then
+		f:SetWidth(WR_MINI_WIDTH)
+		f:SetHeight(WR_MINI_HEIGHT)
+
+		f.bgTextureLeft:ClearAllPoints()
+		f.bgTextureLeft:SetPoint("TOPLEFT", f, "TOPLEFT", 5, -5)
+		f.bgTextureLeft:SetPoint("BOTTOMRIGHT", f, "BOTTOM", 0, 5)
+
+		f.bgTextureRight:ClearAllPoints()
+		f.bgTextureRight:SetPoint("TOPLEFT", f, "TOP", 0, -5)
+		f.bgTextureRight:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -5, 5)
+
+		-- Volume slider (middle row, left group).
+		f.volumeLabel:Hide()
+		f.volumeSlider:ClearAllPoints()
+		f.volumeSlider:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -38)
+		f.volumeSlider:SetWidth(88)
+		f.volumeSlider:Show()
+
+		f.volumeValueText:ClearAllPoints()
+		f.volumeValueText:SetPoint("TOPLEFT", f, "TOPLEFT", 100, -43)
+		f.volumeValueText:SetWidth(34)
+		f.volumeValueText:Show()
+
+		-- Mute button immediately after vol%, then a gap before transport.
+		f.muteButton:ClearAllPoints()
+		f.muteButton:SetPoint("TOPLEFT", f, "TOPLEFT", 135, -38)
+		f.muteButton:SetWidth(38)
+		f.muteButton:SetHeight(20)
+		f.muteButton:Show()
+
+		-- Transport buttons (middle row, right group, detached from mute).
+		f.prevButton:ClearAllPoints()
+		f.prevButton:SetPoint("TOPLEFT", f, "TOPLEFT", 193, -38)
+		f.prevButton:SetWidth(42)
+		f.prevButton:SetHeight(20)
+		f.prevButton:Show()
+
+		f.playButton:ClearAllPoints()
+		f.playButton:SetPoint("TOPLEFT", f, "TOPLEFT", 237, -38)
+		f.playButton:SetWidth(42)
+		f.playButton:SetHeight(20)
+		f.playButton:Show()
+
+		f.stopButton:ClearAllPoints()
+		f.stopButton:SetPoint("TOPLEFT", f, "TOPLEFT", 281, -38)
+		f.stopButton:SetWidth(42)
+		f.stopButton:SetHeight(20)
+		f.stopButton:Show()
+
+		f.nextButton:ClearAllPoints()
+		f.nextButton:SetPoint("TOPLEFT", f, "TOPLEFT", 325, -38)
+		f.nextButton:SetWidth(42)
+		f.nextButton:SetHeight(20)
+		f.nextButton:Show()
+
+		-- Now-playing bar (bottom row).
+		f.nowBack:ClearAllPoints()
+		f.nowBack:SetPoint("TOPLEFT", f, "TOPLEFT", 6, -62)
+		f.nowBack:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -6, 10)
+
+		f.nowStatusText:ClearAllPoints()
+		f.nowStatusText:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -66)
+		f.nowStatusText:SetWidth(58)
+
+		f.nowStationText:ClearAllPoints()
+		f.nowStationText:SetPoint("LEFT", f.nowStatusText, "RIGHT", 4, 0)
+		f.nowStationText:SetWidth(270)
+
+		-- Hide full-mode-only elements.
+		f.randomButton:Hide()
+		f.autoButton:Hide()
+		f.customButton:Hide()
+		f.pageText:Hide()
+		f.pagePrev:Hide()
+		f.pageNext:Hide()
+		if f.sizer then f.sizer:Hide() end
+
+		for _, tabInfo in ipairs(WR_TABS) do
+			local b = f.tabButtons[tabInfo.key]
+			if b then b:Hide() end
+		end
+
+		for i = 1, WR_LINES_PER_PAGE do
+			f.rows[i].star:Hide()
+			f.rows[i].row:Hide()
+		end
+	else
+		-- Full mode.
+		f:SetWidth(WR_FRAME_WIDTH)
+		f:SetHeight(WR_FRAME_HEIGHT)
+
+		f.bgTextureLeft:ClearAllPoints()
+		f.bgTextureLeft:SetPoint("TOPLEFT", f, "TOPLEFT", 5, -5)
+		f.bgTextureLeft:SetPoint("BOTTOMRIGHT", f, "BOTTOM", 0, 5)
+
+		f.bgTextureRight:ClearAllPoints()
+		f.bgTextureRight:SetPoint("TOPLEFT", f, "TOP", 0, -5)
+		f.bgTextureRight:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -5, 5)
+
+		-- Mute button above vol slider, centered over it on the left.
+		f.muteButton:ClearAllPoints()
+		f.muteButton:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -80)
+		f.muteButton:SetWidth(46)
+		f.muteButton:SetHeight(18)
+		f.muteButton:Show()
+
+		-- Volume row.
+		f.volumeLabel:ClearAllPoints()
+		f.volumeLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -105)
+		f.volumeLabel:Show()
+
+		f.volumeSlider:ClearAllPoints()
+		f.volumeSlider:SetPoint("TOPLEFT", f, "TOPLEFT", 44, -102)
+		f.volumeSlider:SetWidth(108)
+		f.volumeSlider:Show()
+
+		f.volumeValueText:ClearAllPoints()
+		f.volumeValueText:SetPoint("TOPLEFT", f, "TOPLEFT", 158, -105)
+		f.volumeValueText:SetWidth(40)
+		f.volumeValueText:Show()
+
+		-- Transport row.
+		f.prevButton:ClearAllPoints()
+		f.prevButton:SetPoint("TOPLEFT", f, "TOPLEFT", 205, -100)
+		f.prevButton:SetWidth(46)
+		f.prevButton:SetHeight(20)
+		f.prevButton:Show()
+
+		f.playButton:ClearAllPoints()
+		f.playButton:SetPoint("TOPLEFT", f, "TOPLEFT", 254, -100)
+		f.playButton:SetWidth(46)
+		f.playButton:SetHeight(20)
+		f.playButton:Show()
+
+		f.stopButton:ClearAllPoints()
+		f.stopButton:SetPoint("TOPLEFT", f, "TOPLEFT", 303, -100)
+		f.stopButton:SetWidth(46)
+		f.stopButton:SetHeight(20)
+		f.stopButton:Show()
+
+		f.nextButton:ClearAllPoints()
+		f.nextButton:SetPoint("TOPLEFT", f, "TOPLEFT", 352, -100)
+		f.nextButton:SetWidth(46)
+		f.nextButton:SetHeight(20)
+		f.nextButton:Show()
+
+		f.randomButton:ClearAllPoints()
+		f.randomButton:SetPoint("TOPLEFT", f, "TOPLEFT", 401, -100)
+		f.randomButton:SetWidth(54)
+		f.randomButton:SetHeight(20)
+		f.randomButton:Show()
+
+		f.autoButton:ClearAllPoints()
+		f.autoButton:SetPoint("TOPLEFT", f, "TOPLEFT", 458, -100)
+		f.autoButton:SetWidth(82)
+		f.autoButton:SetHeight(20)
+		f.autoButton:Show()
+
+		-- Now-playing bar (bottom of station list).
+		f.nowBack:ClearAllPoints()
+		f.nowBack:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -364)
+		f.nowBack:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", -20, -386)
+
+		f.nowStatusText:ClearAllPoints()
+		f.nowStatusText:SetPoint("TOPLEFT", f, "TOPLEFT", 34, -369)
+		f.nowStatusText:SetWidth(72)
+
+		f.nowStationText:ClearAllPoints()
+		f.nowStationText:SetPoint("LEFT", f.nowStatusText, "RIGHT", 4, 0)
+		f.nowStationText:SetWidth(320)
+
+		-- Bottom controls.
+		f.customButton:ClearAllPoints()
+		f.customButton:SetPoint("TOPLEFT", f, "TOPLEFT", 355, -391)
+		f.customButton:SetWidth(88)
+		f.customButton:SetHeight(22)
+		f.customButton:Show()
+
+		f.pagePrev:ClearAllPoints()
+		f.pagePrev:SetPoint("TOPLEFT", f, "TOPLEFT", 449, -391)
+		f.pagePrev:SetWidth(44)
+		f.pagePrev:SetHeight(22)
+		f.pagePrev:Show()
+
+		f.pageNext:ClearAllPoints()
+		f.pageNext:SetPoint("TOPLEFT", f, "TOPLEFT", 496, -391)
+		f.pageNext:SetWidth(44)
+		f.pageNext:SetHeight(22)
+		f.pageNext:Show()
+
+		f.pageText:ClearAllPoints()
+		f.pageText:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -399)
+		f.pageText:SetWidth(330)
+		f.pageText:Show()
+
+		if f.sizer then f.sizer:Show() end
+
+		-- Tabs.
+		local tabX = 20
+		local tabY = -130
+		for _, tabInfo in ipairs(WR_TABS) do
+			local b = f.tabButtons[tabInfo.key]
+			if b then
+				b:ClearAllPoints()
+				b:SetPoint("TOPLEFT", f, "TOPLEFT", tabX, tabY)
+				b:SetWidth(tabInfo.width)
+				b:SetHeight(20)
+				b:Show()
+			end
+			tabX = tabX + tabInfo.width + 5
+		end
+
+		-- Station rows.
+		for i = 1, WR_LINES_PER_PAGE do
+			local row = f.rows[i]
+			local y = -158 - ((i - 1) * 25)
+			row.star:ClearAllPoints()
+			row.star:SetPoint("TOPLEFT", f, "TOPLEFT", 20, y)
+			row.star:SetWidth(24)
+			row.star:SetHeight(20)
+			row.row:ClearAllPoints()
+			row.row:SetPoint("TOPLEFT", f, "TOPLEFT", 48, y)
+			row.row:SetWidth(485)
+			row.row:SetHeight(20)
+		end
+	end
+
+	-- Fade button always top-left regardless of mode.
+	f.fadeButton:ClearAllPoints()
+	f.fadeButton:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -6)
+	f.fadeButton:SetWidth(46)
+	f.fadeButton:SetHeight(18)
+end
+
+-----------------------------------------------------------------
+-- WowRadio
 -- Author: Tormentor @Mannoroth
 --
 -- 0.3 initial beta release
