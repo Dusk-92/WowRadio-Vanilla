@@ -5,7 +5,7 @@
 local WR_STATIONS = {
 
 	-- game / special
-	{ "http://radiodirect2.turtle-music.org/stream",                        "Everlook Broadcasting Co.",                                                     "GAME"       },
+	{ "http://romeblue7.myvnc.com:8088/stream",                 	        "Out of Bounds Entertainment",                                                   "GAME"       },
 
 	-- news / talk / comedy
 	{ "http://stream.live.vc.bbcmedia.co.uk/bbc_world_service",             "BBC World Service - International news, analysis, and talk radio",              "TALK"       },
