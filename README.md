@@ -8,7 +8,7 @@ Listen to Internet Radio while playing World of Warcraft. For WoW client 1.12.
 
 **Full mode**
 
-<img width="509" height="390" alt="image" src="https://github.com/user-attachments/assets/d303d94f-4dc3-42ad-ab49-51a7a6fae8c5" />
+<img width="506" height="389" alt="image" src="https://github.com/user-attachments/assets/1f2b6410-5073-49f0-bff3-46109e278b61" />
 
 
 
