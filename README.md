@@ -32,6 +32,9 @@ Known Issues: none.
 
 So have fun with this one, hope you like it.
 
+Credits:
+jack.e for initial GUI and ideas
+
 Changelog:
 - 1.0  Added 96 new stations, custom url button, fade on move toggle, resizing, saving parameters, keybinds -- 2026/05/05
 
