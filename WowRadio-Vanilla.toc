@@ -2,7 +2,7 @@
 ## Title: WowRadio |cff7fff7f -Ace2-|r
 ## Notes: Listen to Internet Radio inside WoW
 ## Author: Tormentor @Mannoroth, belthazor
-## Version: 1.0
+## Version: 1.1
 ## OptionalDeps: Ace2
 ## SavedVariables: WowRadioDB
 ## SavedVariablesPerCharacter: WowRadioDBPC
