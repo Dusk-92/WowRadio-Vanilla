@@ -2,7 +2,14 @@
 
 Listen to Internet Radio while playing World of Warcraft. For WoW client 1.12.
 
-<img width="554" height="428" alt="image" src="https://github.com/user-attachments/assets/f4ab666e-38ec-4440-8ea9-f42cf6f7f701" />
+**Compact mode**
+
+<img width="336" height="82" alt="image" src="https://github.com/user-attachments/assets/6a389409-854a-4c4c-a635-50be52a58229" />
+
+**Full mode**
+
+<img width="509" height="390" alt="image" src="https://github.com/user-attachments/assets/d303d94f-4dc3-42ad-ab49-51a7a6fae8c5" />
+
 
 
  - addon based on Ace2
@@ -36,6 +43,7 @@ Credits:
 jack.e for initial GUI and ideas
 
 Changelog:
+- 1.1  Updated stations, added compact mode, mute button, UI refinements
 - 1.0  Added 96 new stations, custom url button, fade on move toggle, resizing, saving parameters, keybinds -- 2026/05/05
 
 - 0.4a Backported to vanilla   --  2015/08/30
