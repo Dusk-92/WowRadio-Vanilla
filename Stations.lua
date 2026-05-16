@@ -6,6 +6,7 @@ local WR_STATIONS = {
 
 	-- game / special
 	{ "http://romeblue7.myvnc.com:8088/stream",                 	        "Out of Bounds Entertainment",                                                   "GAME"       },
+	{ "http://radio.nexushoster.com:8000/radio.mp3",                 	    "Azeroth Radio",                   				                                 "GAME"       },
 
 	-- news / talk / comedy
 	{ "http://stream.live.vc.bbcmedia.co.uk/bbc_world_service",             "BBC World Service - International news, analysis, and talk radio",              "TALK"       },
