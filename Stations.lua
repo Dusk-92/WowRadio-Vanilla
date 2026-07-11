@@ -7,7 +7,7 @@ local WR_STATIONS = {
 	-- game / special
 	{ "http://radio.octowow.st/listen/booty_bay_pirate_radio/radio.mp3",    "Booty Bay Pirate Radio",                    					                    "GAME"        },
 	{ "http://radio.octowow.st/listen/booty_bay_pirate_radio_thematic_tower/radio.mp3", "Booty Bay Pirate Radio (Thematic Tower)",                              "GAME"        },
-	{ "ttp://outofbounds.live:8000/radio.mp3",                 	        "Out of Bounds Entertainment",                                                          "GAME"        },
+	{ "http://outofbounds.live:8000/radio.mp33",                 	        "Out of Bounds Entertainment",                                                      "GAME"        },
 	{ "http://radio.nexushoster.com:8000/radio.mp3",                 	    "Azeroth Radio",                    				                                "GAME"        },
 
 	
