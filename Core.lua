@@ -759,7 +759,6 @@ button:SetHeight(31)
 button:SetFrameStrata("MEDIUM")
 button:SetFrameLevel(4)
 button:EnableMouse(true)
-button:SetMovable(true)
 button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 button:RegisterForDrag("LeftButton")
 button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
@@ -793,21 +792,62 @@ WowRadio:ToggleUI()
 end
 end)
 
+local minimapDragging = false
+local minimapDragX = mm.x or 0
+local minimapDragY = mm.y or 0
+
+local function UpdateMinimapButtonDrag()
+local cursorX, cursorY = GetCursorPosition()
+local scale = UIParent:GetScale()
+
+if Minimap.GetEffectiveScale then
+scale = Minimap:GetEffectiveScale()
+end
+
+if not scale or scale == 0 then
+return
+end
+
+cursorX = cursorX / scale
+cursorY = cursorY / scale
+
+local centerX, centerY = Minimap:GetCenter()
+if not centerX or not centerY then
+return
+end
+
+minimapDragX = cursorX - centerX
+minimapDragY = cursorY - centerY
+
+button:ClearAllPoints()
+button:SetPoint("CENTER", Minimap, "CENTER", minimapDragX, minimapDragY)
+end
+
 button:SetScript("OnDragStart", function()
 if IsShiftKeyDown() then
-this:StartMoving()
+minimapDragging = true
+UpdateMinimapButtonDrag()
 end
 end)
 
 button:SetScript("OnDragStop", function()
-this:StopMovingOrSizing()
+if not minimapDragging then
+return
+end
 
-local point, relativeTo, relPoint, x, y = this:GetPoint(1)
+UpdateMinimapButtonDrag()
+minimapDragging = false
 
-WowRadio.db.account.minimap.point = point
-WowRadio.db.account.minimap.relPoint = relPoint
-WowRadio.db.account.minimap.x = x
-WowRadio.db.account.minimap.y = y
+WowRadio.db.account.minimap.point = "CENTER"
+WowRadio.db.account.minimap.relPoint = "CENTER"
+WowRadio.db.account.minimap.x = minimapDragX
+WowRadio.db.account.minimap.y = minimapDragY
+end)
+
+button:SetScript("OnUpdate", function()
+if minimapDragging then
+UpdateMinimapButtonDrag()
+end
 end)
 
 button:SetScript("OnEnter", function()
