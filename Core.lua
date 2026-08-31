@@ -209,9 +209,7 @@ y = -8,
 function WowRadio:OnEnable()
 WowRadio:EnsureUIDefaults()
 WowRadio:CreateMinimapButton()
-
--- Preserve the saved music volume without constructing the controller UI.
-WowRadio:ApplyVolume(WowRadio:GetVolume(), true)
+WowRadio:CreateController()
 
 -- Restore custom URL from previous session.
 customUrl = self.db.account.customUrl or nil
@@ -617,13 +615,8 @@ end
 function WowRadio:ToggleFadeOnMove()
 self.db.account.fadeOnMove = not self.db.account.fadeOnMove
 
-if WowRadioFrame then
-if self.db.account.fadeOnMove and WowRadioFrame:IsVisible() then
-if WowRadioFrame.moveWatcher then WowRadioFrame.moveWatcher:Show() end
-else
-if WowRadioFrame.moveWatcher then WowRadioFrame.moveWatcher:Hide() end
+if WowRadioFrame and not self.db.account.fadeOnMove then
 WowRadioFrame:SetAlpha(1)
-end
 end
 
 WowRadio:RefreshFadeButton()
@@ -741,13 +734,7 @@ WowRadio:CreateController()
 end
 
 WowRadioFrame:Show()
-if WowRadioFrame.moveWatcher then
-if self.db.account.fadeOnMove then
-WowRadioFrame.moveWatcher:Show()
-else
-WowRadioFrame.moveWatcher:Hide()
-end
-end
+if WowRadioFrame.moveWatcher then WowRadioFrame.moveWatcher:Show() end
 self.db.account.ui.shown = true
 WowRadio:RefreshUI()
 end
@@ -755,7 +742,6 @@ end
 function WowRadio:HideController()
 if WowRadioFrame then
 if WowRadioFrame.moveWatcher then WowRadioFrame.moveWatcher:Hide() end
-WowRadioFrame:SetAlpha(1)
 WowRadioFrame:Hide()
 end
 
@@ -946,31 +932,24 @@ sizer:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
 local sizerDragging = false
 local sizerStartX, sizerStartScale
 
-local function WowRadioSizerOnUpdate()
+sizer:SetScript("OnMouseDown", function()
+sizerDragging = true
+sizerStartX = GetCursorPosition()
+sizerStartScale = WowRadioFrame:GetScale()
+end)
+
+sizer:SetScript("OnMouseUp", function()
+sizerDragging = false
+WowRadio.db.account.ui.scale = WowRadioFrame:GetScale()
+end)
+
+sizer:SetScript("OnUpdate", function()
 if not sizerDragging then return end
 local cx = GetCursorPosition()
 local newScale = sizerStartScale + (cx - sizerStartX) * 0.002
 if newScale < 0.5 then newScale = 0.5 end
 if newScale > 2.0 then newScale = 2.0 end
 WowRadioFrame:SetScale(newScale)
-end
-
-sizer:SetScript("OnMouseDown", function()
-sizerDragging = true
-sizerStartX = GetCursorPosition()
-sizerStartScale = WowRadioFrame:GetScale()
-this:SetScript("OnUpdate", WowRadioSizerOnUpdate)
-end)
-
-sizer:SetScript("OnMouseUp", function()
-sizerDragging = false
-this:SetScript("OnUpdate", nil)
-WowRadio.db.account.ui.scale = WowRadioFrame:GetScale()
-end)
-
-sizer:SetScript("OnHide", function()
-sizerDragging = false
-this:SetScript("OnUpdate", nil)
 end)
 f.sizer = sizer
 
@@ -1003,7 +982,6 @@ WowRadioFrame:SetAlpha(1)
 wasMoving = false
 end
 end)
-moveWatcher:Hide()
 f.moveWatcher = moveWatcher
 
 local nowBack = f:CreateTexture(nil, "ARTWORK")
@@ -1203,6 +1181,7 @@ end)
 f.urlDialog = urlDialog
 f.urlEditBox = urlEditBox
 
+WowRadio:ApplyVolume(WowRadio:GetVolume(), true)
 WowRadio:ApplyUIMode()
 end
 
