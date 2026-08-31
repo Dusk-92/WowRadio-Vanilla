@@ -8,7 +8,6 @@ local WR_STATIONS = {
 	{ "http://radio.octowow.st/listen/booty_bay_pirate_radio/radio.mp3",    "Booty Bay Pirate Radio",                    					                    "GAME"        },
 	{ "http://radio.octowow.st/listen/booty_bay_pirate_radio_thematic_tower/radio.mp3", "Booty Bay Pirate Radio (Thematic Tower)",                              "GAME"        },
 	{ "http://outofbounds.live:8000/radio.mp3",                 	        "Out of Bounds Entertainment",                                                      "GAME"        },
-	{ "http://radiodirect.turtle-music.org/stream",                 	    "Everlook Broadcasting Co.",                                                        "GAME"        },
 	{ "http://radio.nexushoster.com:8000/radio.mp3",                 	    "Azeroth Radio",                    				                                "GAME"        },
 
 	
@@ -126,6 +125,8 @@ local WR_STATIONS = {
 	{ "http://uk5.internet-radio.com:8306/",                                "Moon Mission Recordings - Tokyo Deep and Electronic",                           "ELECTRONIC" },
 	{ "http://uk4.internet-radio.com:8049/",                                "Dance Attack FM - The Best EDM",                                                "ELECTRONIC" },
 	{ "http://dancestream.danceradiouk.com/stream",                         "Dance UK Radio",                                                                "ELECTRONIC" },
+
+	{ "http://radiodirect.turtle-music.org/stream",                 	    "Everlook Broadcasting Co.",                                                        "GAME"        },
 
 }
 
