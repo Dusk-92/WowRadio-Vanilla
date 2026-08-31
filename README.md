@@ -1,54 +1,127 @@
-# WowRadio-Vanilla
+# 📻 WowRadio — Vanilla
 
-Listen to Internet Radio while playing World of Warcraft. For WoW client 1.12.
+Listen to Internet Radio directly inside **World of Warcraft 1.12**.
 
-**Compact mode**
+WowRadio provides a simple in-game radio player with a large built-in station list, compact and full interface modes, custom stream support, saved settings and convenient playback controls.
 
-<img width="336" height="82" alt="image" src="https://github.com/user-attachments/assets/6a389409-854a-4c4c-a635-50be52a58229" />
+## ✨ Features
 
-**Full mode**
+- 100 built-in radio stations
+- Game, Rock, Electronic, Jazz, Talk and Variety categories
+- Compact and Full interface modes
+- Previous / Next / Random station controls
+- Custom radio stream support
+- Automatic playback on login
+- Saved settings and last selected station
+- Key bindings
+- Titan Panel integration
+- Easy station management through `Stations.lua`
 
-<img width="506" height="389" alt="image" src="https://github.com/user-attachments/assets/1f2b6410-5073-49f0-bff3-46109e278b61" />
+## 🖼️ Interface
 
+### Compact mode
 
+<img width="336" height="82" alt="WowRadio Compact Mode" src="https://github.com/user-attachments/assets/6a389409-854a-4c4c-a635-50be52a58229" />
 
- - addon based on Ace2
- - 96 radio stations included
- - easy way to change stations in Stations.lua:
-   just change url and message which will be displayed.
- - Titan Panel for station navigation.
+### Full mode
 
-Note: to listen to Internet Radio, you need to enable ingame music.
+<img width="506" height="389" alt="WowRadio Full Mode" src="https://github.com/user-attachments/assets/1f2b6410-5073-49f0-bff3-46109e278b61" />
 
-Type /wowradio or /wr for options
+## 📦 Installation
 
-list of commands:
+1. Download the addon.
+2. Place the `WowRadio-Vanilla` folder inside:
 
-/wrtune		switch to station by given number (e.g. /wrtune 10)
-/wrplay		plays last set radio station
-/wrstop		stops music
-/wrnext		switch to next station
-/wrprev		switch to previous station
-/wrrnd		switch to random station
-/wrlist		prints out a list of stations available
-/wrinfo		displays which station is currently played
-/wrauto		toggles autostart on/off
-/wrcustom	plays given url
+   `World of Warcraft\Interface\AddOns\`
 
-Known Issues: none.
+3. Start or restart the game.
+4. Make sure **in-game music is enabled**, as WowRadio uses the WoW music system for radio playback.
 
-So have fun with this one, hope you like it.
+Open the options with:
 
-Credits:
-jack.e for initial GUI and ideas
+`/wowradio`
 
-Changelog:
-- 1.1  Updated stations, added compact mode, mute button, UI refinements
-- 1.0  Added 96 new stations, custom url button, fade on move toggle, resizing, saving parameters, keybinds -- 2026/05/05
+or:
 
-- 0.4a Backported to vanilla   --  2015/08/30
-  
-- 0.4 	/wrinfo now correctly shows url if playing custom url  -2006/12/25
-- Titan Panel Plugin included
-- moved stations to Stations.lua
+`/wr`
 
+## 🎵 Commands
+
+| Command | Description |
+|---|---|
+| `/wrtune <number>` | Switch to a station by number |
+| `/wrplay` | Play the last selected radio station |
+| `/wrstop` | Stop radio playback |
+| `/wrnext` | Switch to the next station |
+| `/wrprev` | Switch to the previous station |
+| `/wrrnd` | Switch to a random station |
+| `/wrlist` | Display the available station list |
+| `/wrinfo` | Display the currently playing station |
+| `/wrauto` | Toggle automatic playback on or off |
+| `/wrcustom <url>` | Play a custom stream URL |
+
+Example:
+
+`/wrtune 10`
+
+## 📡 Custom stations
+
+Custom radio streams can be played directly with:
+
+`/wrcustom http://example.com/stream`
+
+Built-in stations are stored in `Stations.lua`.
+
+Each station follows this format:
+
+`{ "Stream URL", "Display Name", "CATEGORY" }`
+
+Available categories:
+
+- `GAME`
+- `TALK`
+- `ROCK`
+- `ELECTRONIC`
+- `JAZZ`
+- `VARIETY`
+
+Station numbering and synchronization are handled automatically.
+
+## ⚙️ Compatibility
+
+- World of Warcraft client 1.12
+- Interface version 11200
+- Ace2-based
+- Titan Panel support
+
+## 🙏 Credits
+
+Original addon by **Tormentor @ Mannoroth** and **belthazor**.
+
+Initial GUI and ideas by **jack.e**.
+
+Vanilla version maintenance and additional improvements by **Dusk-92**.
+
+## 📜 Changelog
+
+### 1.1
+- Updated radio stations
+- Added Compact Mode
+- Added mute button
+- Added UI refinements
+
+### 1.0
+- Added 96 radio stations
+- Added custom URL support
+- Added fade-on-move option
+- Added interface resizing
+- Added saved settings
+- Added key bindings
+
+### 0.4a
+- Backported to World of Warcraft Vanilla
+
+### 0.4
+- `/wrinfo` now correctly displays custom URLs
+- Added Titan Panel plugin
+- Moved station definitions to `Stations.lua`
