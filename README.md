@@ -94,6 +94,25 @@ Station numbering and synchronization are handled automatically.
 - Ace2-based
 - Titan Panel support
 
+## 📜 Project identity & licensing
+
+WowRadio-Vanilla is an independent community-maintained addon. It is not
+affiliated with or endorsed by Blizzard Entertainment or by the radio stations
+listed in `Stations.lua`.
+
+The repository contains mixed-origin material. The historical WowRadio code has
+no explicit project-wide license identified in the currently known upstream
+repositories, so this fork does **not** claim to relicense that inherited code.
+
+For details, see:
+
+- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+- [PROJECT_IDENTITY.md](PROJECT_IDENTITY.md)
+- [Docs/CODE_PROVENANCE.md](Docs/CODE_PROVENANCE.md)
+- [Docs/ASSET_PROVENANCE.md](Docs/ASSET_PROVENANCE.md)
+- [Docs/STATION_DIRECTORY_NOTICE.md](Docs/STATION_DIRECTORY_NOTICE.md)
+- [LICENSES/](LICENSES/)
+
 ## 🙏 Credits
 
 Original addon by **Tormentor @ Mannoroth** and **belthazor**.
