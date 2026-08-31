@@ -31,6 +31,7 @@ local L = AceLibrary("AceLocale-2.2"):new("WowRadio")
 local version = "0.7i-nowplaying-bottom"
 local customUrl = nil
 local stopped = false
+local stationShortNameCache = {}
 
 WowRadio = AceLibrary("AceAddon-2.0"):new("AceEvent-2.0", "AceConsole-2.0", "AceDB-2.0")
 
@@ -208,7 +209,9 @@ y = -8,
 function WowRadio:OnEnable()
 WowRadio:EnsureUIDefaults()
 WowRadio:CreateMinimapButton()
-WowRadio:CreateController()
+
+-- Preserve the saved music volume without constructing the controller UI.
+WowRadio:ApplyVolume(WowRadio:GetVolume(), true)
 
 -- Restore custom URL from previous session.
 customUrl = self.db.account.customUrl or nil
@@ -271,7 +274,7 @@ else
 wr_msg("|cff7FFF7FWowRadio: "..L["wrauto_disabled"]..":|r") 
 end
 
-WowRadio:RefreshUI()
+WowRadio:RefreshAutoButton()
 end
 
 function WowRadio:isAutostart()
@@ -303,14 +306,14 @@ self.db.account.customUrl = nil
 stopped = false
 customUrl = nil
 
-WowRadio:RefreshUI()
+WowRadio:RefreshNowPlaying()
 end
 
 function WowRadio:stop()
 StopMusic()
 stopped = true
 wr_alert("Music stopped.")
-WowRadio:RefreshUI()
+WowRadio:RefreshNowPlaying()
 end
 
 function WowRadio:next()
@@ -339,7 +342,7 @@ self.db.account.customUrl = url
 WowRadio:ForceMusicPlay(url)
 stopped = false
 
-WowRadio:RefreshUI()
+WowRadio:RefreshNowPlaying()
 end
 
 function WowRadio:usage()
@@ -438,14 +441,21 @@ end
 end
 
 function WowRadio:getStationShortName(index)
-local msg = stationMsg[index] or ""
-local pos = string.find(msg, " %- ")
-
-if pos then
-return string.sub(msg, 1, pos - 1)
+local cached = stationShortNameCache[index]
+if cached ~= nil then
+return cached
 end
 
-return msg
+local msg = stationMsg[index] or ""
+local pos = string.find(msg, " %- ")
+local shortName = msg
+
+if pos then
+shortName = string.sub(msg, 1, pos - 1)
+end
+
+stationShortNameCache[index] = shortName
+return shortName
 end
 
 -----------------------------------------------------------------
@@ -607,11 +617,16 @@ end
 function WowRadio:ToggleFadeOnMove()
 self.db.account.fadeOnMove = not self.db.account.fadeOnMove
 
-if WowRadioFrame and not self.db.account.fadeOnMove then
+if WowRadioFrame then
+if self.db.account.fadeOnMove and WowRadioFrame:IsVisible() then
+if WowRadioFrame.moveWatcher then WowRadioFrame.moveWatcher:Show() end
+else
+if WowRadioFrame.moveWatcher then WowRadioFrame.moveWatcher:Hide() end
 WowRadioFrame:SetAlpha(1)
 end
+end
 
-WowRadio:RefreshUI()
+WowRadio:RefreshFadeButton()
 end
 
 function WowRadio:SafeGetCVar(name)
@@ -726,7 +741,13 @@ WowRadio:CreateController()
 end
 
 WowRadioFrame:Show()
-if WowRadioFrame.moveWatcher then WowRadioFrame.moveWatcher:Show() end
+if WowRadioFrame.moveWatcher then
+if self.db.account.fadeOnMove then
+WowRadioFrame.moveWatcher:Show()
+else
+WowRadioFrame.moveWatcher:Hide()
+end
+end
 self.db.account.ui.shown = true
 WowRadio:RefreshUI()
 end
@@ -734,6 +755,7 @@ end
 function WowRadio:HideController()
 if WowRadioFrame then
 if WowRadioFrame.moveWatcher then WowRadioFrame.moveWatcher:Hide() end
+WowRadioFrame:SetAlpha(1)
 WowRadioFrame:Hide()
 end
 
@@ -924,24 +946,31 @@ sizer:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
 local sizerDragging = false
 local sizerStartX, sizerStartScale
 
-sizer:SetScript("OnMouseDown", function()
-sizerDragging = true
-sizerStartX = GetCursorPosition()
-sizerStartScale = WowRadioFrame:GetScale()
-end)
-
-sizer:SetScript("OnMouseUp", function()
-sizerDragging = false
-WowRadio.db.account.ui.scale = WowRadioFrame:GetScale()
-end)
-
-sizer:SetScript("OnUpdate", function()
+local function WowRadioSizerOnUpdate()
 if not sizerDragging then return end
 local cx = GetCursorPosition()
 local newScale = sizerStartScale + (cx - sizerStartX) * 0.002
 if newScale < 0.5 then newScale = 0.5 end
 if newScale > 2.0 then newScale = 2.0 end
 WowRadioFrame:SetScale(newScale)
+end
+
+sizer:SetScript("OnMouseDown", function()
+sizerDragging = true
+sizerStartX = GetCursorPosition()
+sizerStartScale = WowRadioFrame:GetScale()
+this:SetScript("OnUpdate", WowRadioSizerOnUpdate)
+end)
+
+sizer:SetScript("OnMouseUp", function()
+sizerDragging = false
+this:SetScript("OnUpdate", nil)
+WowRadio.db.account.ui.scale = WowRadioFrame:GetScale()
+end)
+
+sizer:SetScript("OnHide", function()
+sizerDragging = false
+this:SetScript("OnUpdate", nil)
 end)
 f.sizer = sizer
 
@@ -974,6 +1003,7 @@ WowRadioFrame:SetAlpha(1)
 wasMoving = false
 end
 end)
+moveWatcher:Hide()
 f.moveWatcher = moveWatcher
 
 local nowBack = f:CreateTexture(nil, "ARTWORK")
@@ -1020,7 +1050,6 @@ end)
 
 f.autoButton = WowRadio:CreateWRButton(f, "Auto", 458, -100, 82, 20, function()
 WowRadio:toggleAutostart()
-WowRadio:RefreshUI()
 end)
 
 local volumeLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -1174,9 +1203,7 @@ end)
 f.urlDialog = urlDialog
 f.urlEditBox = urlEditBox
 
-WowRadio:ApplyVolume(WowRadio:GetVolume(), true)
 WowRadio:ApplyUIMode()
-WowRadio:RefreshUI()
 end
 
 function WowRadio:CreateWRButton(parent, text, x, y, width, height, onclick)
@@ -1200,6 +1227,9 @@ return
 end
 
 local currentTab = self.db.account.ui.tab or "ALL"
+if WowRadioFrame.activeTabKey == currentTab then
+return
+end
 
 for _, tabInfo in ipairs(WR_TABS) do
 local b = WowRadioFrame.tabButtons[tabInfo.key]
@@ -1212,12 +1242,13 @@ b:SetText(tabInfo.label)
 end
 end
 end
+WowRadioFrame.activeTabKey = currentTab
 end
 
 function WowRadio:SetUITab(tab)
 self.db.account.ui.tab = tab
 self.db.account.ui.page = 1
-WowRadio:RefreshUI()
+WowRadio:RefreshStationPanel(true)
 end
 
 function WowRadio:PageBack()
@@ -1229,27 +1260,13 @@ page = 1
 end
 
 self.db.account.ui.page = page
-WowRadio:RefreshUI()
+WowRadio:RefreshStationPanel(false)
 end
 
 function WowRadio:PageForward()
-local visible = WowRadio:GetVisibleStations()
-local total = table.getn(visible)
-local maxPage = math.ceil(total / WR_LINES_PER_PAGE)
-
-if maxPage < 1 then
-maxPage = 1
-end
-
 local page = tonumber(self.db.account.ui.page) or 1
-page = page + 1
-
-if page > maxPage then
-page = maxPage
-end
-
-self.db.account.ui.page = page
-WowRadio:RefreshUI()
+self.db.account.ui.page = page + 1
+WowRadio:RefreshStationPanel(false)
 end
 
 function WowRadio:IsFavorite(index)
@@ -1272,7 +1289,7 @@ else
 self.db.account.favorites[key] = true
 end
 
-WowRadio:RefreshUI()
+WowRadio:RefreshStationPanel(false)
 end
 
 function WowRadio:GetStationCategory(index)
@@ -1311,19 +1328,12 @@ end
 return visible
 end
 
-function WowRadio:RefreshUI()
-if not WowRadioFrame then
+function WowRadio:RefreshNowPlaying()
+if not WowRadioFrame or not WowRadioFrame:IsVisible() then
 return
 end
 
 local f = WowRadioFrame
-local tab = self.db.account.ui.tab or "ALL"
-
-if tab == "CUSTOM" or tab == "TEST" then
-tab = "ALL"
-self.db.account.ui.tab = "ALL"
-end
-
 local state = "Playing"
 if stopped == true then
 state = "Stopped"
@@ -1348,41 +1358,87 @@ else
 f.nowText:SetText("|cffffffff"..state..":|r |cff00ff00[custom] "..wr_trim(customUrl, 80).."|r")
 end
 end
+end
 
-if f.autoButton then
+function WowRadio:RefreshAutoButton()
+if not WowRadioFrame or not WowRadioFrame:IsVisible() or not WowRadioFrame.autoButton then
+return
+end
+
 if self.db.account.autostart == true then
-f.autoButton:SetText("Auto: On")
+WowRadioFrame.autoButton:SetText("Auto: On")
 else
-f.autoButton:SetText("Auto: Off")
+WowRadioFrame.autoButton:SetText("Auto: Off")
 end
 end
 
-if f.fadeButton then
+function WowRadio:RefreshFadeButton()
+if not WowRadioFrame or not WowRadioFrame:IsVisible() or not WowRadioFrame.fadeButton then
+return
+end
+
 if self.db.account.fadeOnMove then
-f.fadeButton:SetText("|cff7FFF7FFader|r")
+WowRadioFrame.fadeButton:SetText("|cff7FFF7FFader|r")
 else
-f.fadeButton:SetText("Fade")
+WowRadioFrame.fadeButton:SetText("Fade")
 end
 end
 
-if f.muteButton then
+function WowRadio:RefreshMuteButton()
+if not WowRadioFrame or not WowRadioFrame:IsVisible() or not WowRadioFrame.muteButton then
+return
+end
+
 if self.db.account.muted then
-f.muteButton:SetText("|cffFF5555Mute|r")
+WowRadioFrame.muteButton:SetText("|cffFF5555Mute|r")
 else
-f.muteButton:SetText("Mute")
+WowRadioFrame.muteButton:SetText("Mute")
 end
 end
 
-if f.volumeSlider then
+function WowRadio:RefreshVolumeControl()
+if not WowRadioFrame or not WowRadioFrame:IsVisible() or not WowRadioFrame.volumeSlider then
+return
+end
+
 local v = WowRadio:GetVolume()
-if f.volumeSlider:GetValue() ~= v then
-f.volumeSlider:SetValue(v)
+if WowRadioFrame.volumeSlider:GetValue() ~= v then
+WowRadioFrame.volumeSlider:SetValue(v)
 end
 end
 
-WowRadio:ApplyUIMode()
+function WowRadio:RefreshStationPanel(updateTabs)
+if not WowRadioFrame or not WowRadioFrame:IsVisible() then
+return
+end
+
+if self.db.account.ui.compact == true then
+return
+end
+
+if updateTabs ~= false then
 WowRadio:UpdateTabButtons()
+end
 WowRadio:ShowStationPanel()
+end
+
+function WowRadio:RefreshUI()
+if not WowRadioFrame or not WowRadioFrame:IsVisible() then
+return
+end
+
+local tab = self.db.account.ui.tab or "ALL"
+if tab == "CUSTOM" or tab == "TEST" then
+self.db.account.ui.tab = "ALL"
+WowRadioFrame.activeTabKey = nil
+end
+
+WowRadio:RefreshNowPlaying()
+WowRadio:RefreshAutoButton()
+WowRadio:RefreshFadeButton()
+WowRadio:RefreshMuteButton()
+WowRadio:RefreshVolumeControl()
+WowRadio:RefreshStationPanel(true)
 end
 
 function WowRadio:ShowStationPanel()
@@ -1473,7 +1529,7 @@ WowRadio:SafeSetCVar("Sound_MusicVolume", 0)
 else
 WowRadio:ApplyVolume(WowRadio:GetVolume(), true)
 end
-WowRadio:RefreshUI()
+WowRadio:RefreshMuteButton()
 end
 
 function WowRadio:ApplyUIMode()
