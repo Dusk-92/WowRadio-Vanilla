@@ -32,6 +32,7 @@ local version = "0.7i-nowplaying-bottom"
 local customUrl = nil
 local stopped = false
 local stationShortNameCache = {}
+local WR_CHAT_PREFIX = "|cffff9900[WoWRadio]|r "
 
 WowRadio = AceLibrary("AceAddon-2.0"):new("AceEvent-2.0", "AceConsole-2.0", "AceDB-2.0")
 
@@ -267,9 +268,9 @@ function WowRadio:toggleAutostart()
 self.db.account.autostart = not self.db.account.autostart
 
 if self.db.account.autostart == true then
-wr_msg("|cff7FFF7FWowRadio: "..L["wrauto_enabled"]..":|r") 
+wr_msg(WR_CHAT_PREFIX.."Autostart enabled.")
 else
-wr_msg("|cff7FFF7FWowRadio: "..L["wrauto_disabled"]..":|r") 
+wr_msg(WR_CHAT_PREFIX.."Autostart disabled.")
 end
 
 WowRadio:RefreshAutoButton()
@@ -296,7 +297,7 @@ elseif station < 1 then
 station = table.getn(stationUrl)
 end
 
-wr_alert("["..station.."] "..stationMsg[station])
+wr_alert(WR_CHAT_PREFIX.."Tuning in to "..WowRadio:getStationShortName(station).."...")
 WowRadio:ForceMusicPlay(stationUrl[station])
 
 self.db.account.station = station
@@ -310,7 +311,7 @@ end
 function WowRadio:stop()
 StopMusic()
 stopped = true
-wr_alert("Music stopped.")
+wr_alert(WR_CHAT_PREFIX.."Radio off.")
 WowRadio:RefreshNowPlaying()
 end
 
@@ -334,7 +335,7 @@ wr_msg("Usage: /wrcustom URL")
 return
 end
 
-wr_alert(url)
+wr_alert(WR_CHAT_PREFIX.."Tuning in to custom stream...")
 customUrl = url
 self.db.account.customUrl = url
 WowRadio:ForceMusicPlay(url)
@@ -461,13 +462,7 @@ end
 -----------------------------------------------------------------
 
 function wr_alert(txt)
-if IsAddOnLoaded("SCT") then
-SCT:DisplayMessage(txt,{r=1,g=1,b=1})
 wr_msg(txt)
-else
-UIErrorsFrame:AddMessage(txt,1, 1, 1, 1,4)
-wr_msg(txt)
-end
 end
 
 function wr_msg(txt)
@@ -716,7 +711,7 @@ WowRadioFrame.volumeValueText:SetText(math.floor((v * 100) + 0.5).."%")
 end
 
 if quiet ~= true then
-wr_msg("Music volume: "..math.floor((v * 100) + 0.5).."%")
+wr_msg(WR_CHAT_PREFIX.."Volume set to "..math.floor((v * 100) + 0.5).."%.")
 end
 end
 
@@ -1101,6 +1096,10 @@ f.volumeValueText = volumeValue
 
 volume:SetScript("OnValueChanged", function()
 WowRadio:ApplyVolume(this:GetValue(), true)
+end)
+
+volume:SetScript("OnMouseUp", function()
+wr_msg(WR_CHAT_PREFIX.."Volume set to "..math.floor((WowRadio:GetVolume() * 100) + 0.5).."%.")
 end)
 
 volume:SetValue(WowRadio:GetVolume())
@@ -1545,8 +1544,10 @@ WowRadio:SafeSetCVar("EnableMusic", "1")
 WowRadio:SafeSetCVar("Sound_EnableMusic", "1")
 WowRadio:SafeSetCVar("MusicVolume", 0)
 WowRadio:SafeSetCVar("Sound_MusicVolume", 0)
+wr_msg(WR_CHAT_PREFIX.."Muted.")
 else
 WowRadio:ApplyVolume(WowRadio:GetVolume(), true)
+wr_msg(WR_CHAT_PREFIX.."Unmuted.")
 end
 WowRadio:RefreshMuteButton()
 end
