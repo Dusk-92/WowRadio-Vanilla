@@ -21,3 +21,4 @@ Locale-enEN.lua
 Locale-enUS.lua
 Stations.lua
 Core.lua
+MinimapIcon.lua
